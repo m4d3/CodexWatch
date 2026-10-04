@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.pytest_cache/
+*.jsonl
+*.log
+*.zip
+.env*
+config.toml
+auth.json
+local-*
