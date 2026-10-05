@@ -4,6 +4,12 @@
 
 A lightweight, read-only terminal viewer for local Codex activity. Choose a project
 folder and follow its main sessions and subagents without resuming or controlling them.
+For Claude Code, see the companion viewer [ClaudeWatch](https://github.com/m4d3/ClaudeWatch).
+
+<p align="center">
+  <img src="docs/feed.png" width="820" alt="CodexWatch feed: the main agent (A02) spawns a conflict_review subagent (A01). Commands, results, and file changes appear as single lines, a failing test run is marked as a red ERROR with its error line, and the subagent's findings appear as an Answer card.">
+</p>
+<p align="center"><sub>Made-up example session. Conversation gets cards; routine tool calls take one line.</sub></p>
 
 ## Quick start
 
@@ -33,19 +39,15 @@ plans, and coordination between agents. Routine actions and results take one lin
 Failed commands and clear error diagnostics get a red ERROR marker. Warnings and approval blocks get an amber ATTENTION marker. Successful zero-error reports stay routine. Internal approval reviews
 that simply allow an action are quiet. Rejected reviews remain visible.
 
-```text
-  14:12:01  A01  Action: shell command
-  14:12:03  A01  Command: Completed · exit 0
+<details>
+<summary><b>Full example:</b> startup banner, thinking summary, progress, subagent hand-off, and final answer</summary>
+<br>
+<p align="center">
+  <img src="docs/screenshot.png" width="820" alt="Complete CodexWatch session: the startup banner lists two saved sessions; then a thinking summary, a progress card, the spawn_agent hand-off, single-line commands and file changes, a red ERROR for a failing test, the subagent's answer, and a green final answer, followed by the turn-completed status and the live-watch line.">
+</p>
+</details>
 
-  14:12:04  A01  Main agent
-  Progress
-  The build passed. I am checking the preview next.
-
-  14:12:08  A02  ERROR: Exit 1
-    Permission denied
-```
-
-This example is synthetic. No user logs or screenshots are distributed.
+The screenshots show a made-up project and session. No real user logs are distributed.
 
 | Option | Purpose |
 | --- | --- |
