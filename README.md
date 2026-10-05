@@ -1,5 +1,7 @@
 # CodexWatch
 
+[![Functional checks](https://github.com/m4d3/CodexWatch/actions/workflows/ci.yml/badge.svg)](https://github.com/m4d3/CodexWatch/actions/workflows/ci.yml)
+
 A lightweight, read-only terminal viewer for local Codex activity. Choose a project
 folder and follow its main sessions and subagents without resuming or controlling them.
 
@@ -86,8 +88,10 @@ The raw JSON mode keeps its original text and supplemental references.
 CodexWatch has no telemetry, network client, credentials access, or model calls.
 It reads local rollout files and checks local referenced paths. The only subprocess
 is a fixed, read-only `git worktree list` invocation using an argument list; log text
-is never executed or passed to a shell. Git is optional. A missing Git command does
-not prevent watching the selected folder.
+is never executed or passed to a shell. Git is located only through absolute `PATH`
+entries (never the current folder), Git's repository ownership checks stay active, and
+`core.fsmonitor` is disabled so repository configuration cannot start a program.
+Git is optional. A missing Git command does not prevent watching the selected folder.
 
 Exact repeated events are suppressed using a bounded cache. Focus view also omits
 a successful result envelope when a command result already reports the same exit
@@ -150,7 +154,7 @@ python -m ruff format --check .
 
 Install Ruff only for development (`python -m pip install ruff`). Functional tests
 use synthetic logs and temporary files, without contacting OpenAI. CI runs on
-Windows and Linux with Python 3.11 and 3.13. No performance benchmarks are included.
+Windows, Linux, and macOS with Python 3.11 and 3.13. No performance benchmarks are included.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 

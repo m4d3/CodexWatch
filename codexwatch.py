@@ -342,13 +342,31 @@ class Catalog:
         return [log for log in self.logs.values() if log.id in matched]
 
 
+def find_git():
+    """Search only absolute PATH entries: Windows would otherwise try the current folder."""
+    names = ("git.exe",) if os.name == "nt" else ("git",)
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        folder = folder.strip('"')
+        if not folder or not os.path.isabs(folder):
+            continue
+        for name in names:
+            candidate = os.path.join(folder, name)
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return None
+
+
 def worktrees(repo):
+    git = find_git()
+    if not git:
+        return []
     try:
+        # Git's ownership checks stay active; fsmonitor is off so repo config runs nothing.
         result = subprocess.run(
             [
-                "git",
+                git,
                 "-c",
-                f"safe.directory={repo}",
+                "core.fsmonitor=false",
                 "-C",
                 str(repo),
                 "worktree",
@@ -356,6 +374,7 @@ def worktrees(repo):
                 "--porcelain",
                 "-z",
             ],
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             timeout=5,
             check=True,
@@ -404,7 +423,7 @@ def pick_folder(catalog):
             value = choices[int(value) - 1]
         path = Path(os.path.expandvars(value)).expanduser()
         if path.is_dir():
-            return path.resolve()
+            return path.absolute()
         print("That folder does not exist. Try again.")
 
 
@@ -517,12 +536,13 @@ def file_references(text, cwd):
                 if not cwd:
                     continue
                 path = Path(cwd) / path
-            path = path.resolve()
-            if str(path).startswith(("\\\\", "//")):
+            # Check the real target, but link the spelling the message used (symlinks, 8.3 names).
+            target = path.resolve()
+            if str(target).startswith(("\\\\", "//")):
                 continue
-            if path.is_file() and norm(path) not in seen:
-                seen.add(norm(path))
-                found.append(path)
+            if target.is_file() and norm(target) not in seen:
+                seen.add(norm(target))
+                found.append(Path(os.path.normpath(path)))
                 if len(found) >= 128:
                     break
         except (OSError, ValueError):
@@ -1083,16 +1103,19 @@ def main(argv=None):
     print(view.paint("\n  CODEXWATCH", "1;36"))
     view.notice("  Read-only activity feed  ·  Ctrl+C to stop")
     catalog.discover()
-    repo = (
-        Path(os.path.expandvars(args.repo)).expanduser().resolve()
+    given = (
+        Path(os.path.expandvars(args.repo)).expanduser().absolute()
         if args.repo
         else pick_folder(catalog)
     )
-    if repo is None:
+    if given is None:
         return 0
+    repo = given.resolve()
     if not repo.is_dir():
         parser.error(f"Folder does not exist: {repo}")
-    folders = [repo] + worktrees(repo)
+    # Sessions may record either spelling of a symlinked folder (for example /var on macOS).
+    aliases = [repo] + ([given] if norm(given) != norm(repo) else [])
+    folders = aliases + worktrees(repo)
     print(f"\n  Project  {clean(repo)}")
     view.notice("  Thinking summaries · progress · actions · command results · file changes")
     view.notice("  Saved activity may lag the app. Private reasoning is unavailable.")
@@ -1169,7 +1192,7 @@ def main(argv=None):
         if now - last_scan >= 4:
             catalog.discover()
             if now - last_worktrees >= 60:
-                folders = [repo] + worktrees(repo)
+                folders = aliases + worktrees(repo)
                 last_worktrees = now
             tracked.intersection_update(catalog.logs)
             matching = catalog.matching(folders)

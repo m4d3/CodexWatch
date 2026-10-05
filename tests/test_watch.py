@@ -366,7 +366,8 @@ class WatchTests(unittest.TestCase):
             code.write_text("# fixture")
             text = f'[Preview](<{image}:12>)\nImage: "{image}"\n`shader.py`\n[URI]({image.as_uri()})\nmissing.png\nhttps://example.com/image.png'
             self.assertEqual(
-                set(w.file_references(text, str(repo))), {image.resolve(), code.resolve()}
+                {w.norm(p.resolve()) for p in w.file_references(text, str(repo))},
+                {w.norm(image.resolve()), w.norm(code.resolve())},
             )
             with mock.patch.object(sys.stdout, "isatty", return_value=True):
                 view = w.ConsoleView(links="on")
@@ -532,6 +533,31 @@ class WatchTests(unittest.TestCase):
                 records = list(log.records())
             self.assertEqual(records[0]["payload"]["type"], "viewer_notice")
             self.assertEqual(records[-1]["payload"]["type"], "task_complete")
+
+    def test_git_lookup_ignores_relative_path_entries(self):
+        with tempfile.TemporaryDirectory() as folder:
+            name = "git.exe" if w.os.name == "nt" else "git"
+            planted = Path(folder) / name
+            planted.write_bytes(b"")
+            planted.chmod(0o755)
+            with (
+                contextlib.chdir(folder),
+                mock.patch.dict(w.os.environ, {"PATH": "." + w.os.pathsep + "relative"}),
+            ):
+                self.assertIsNone(w.find_git())
+                self.assertEqual(w.worktrees(Path(folder)), [])
+            with mock.patch.dict(w.os.environ, {"PATH": folder}):
+                self.assertEqual(w.find_git(), str(planted))
+
+    def test_worktrees_lists_registered_checkouts(self):
+        if not w.find_git():
+            self.skipTest("Git is not installed")
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder) / "repo"
+            repo.mkdir()
+            subprocess.run([w.find_git(), "init", "-q", str(repo)], check=True)
+            found = [w.norm(path) for path in w.worktrees(repo)]
+            self.assertIn(w.norm(repo.resolve()), found)
 
     def test_caches_are_bounded_and_private_metadata_is_not_retained(self):
         log = w.Log(

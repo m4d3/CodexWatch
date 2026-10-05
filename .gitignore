@@ -10,3 +10,8 @@ __pycache__/
 config.toml
 auth.json
 local-*
+build/
+dist/
+*.egg-info/
+.claude/
+CLAUDE.local.md
